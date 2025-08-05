@@ -1,0 +1,11 @@
+development:
+  dialect: postgres
+  datasource: user=postgres password=e dbname=valkyrie sslmode=disable
+  dir: migrations
+  table: migrations
+
+production:
+  dialect: postgres
+  datasource: user=postgres password=e dbname=myapp sslmode=disable
+  dir: migrations
+  table: migrations
