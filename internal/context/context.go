@@ -41,7 +41,7 @@ func NewContext() *Context {
 		log.Fatalln(err)
 	}
 
-	defer conn.Close(ctx)
+	// Do not close the DB connection here; keep it alive for the application's lifetime.
 	queries := db.New(conn)
 
 	return &Context{Environments: Environments, Queries: queries, DB: conn, RDB: rdb}

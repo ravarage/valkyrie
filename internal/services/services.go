@@ -17,15 +17,17 @@ func NewService[T any](repo interfaces.Service[T], ctx *context.Context) *Servic
 
 func (s *Service[T]) GetByID(p parameter.Parameter) (data T, err error) {
 	key, _ := p.GenCachKey()
-	if err = s.Ctx.Get(key, &data); err != nil {
-		return data, err
+	// Try cache first
+	if err = s.Ctx.Get(key, &data); err == nil {
+		return data, nil
 	}
+	// Cache miss: fetch from repo
 	data, err = s.repo.GetByID(p)
 	if err != nil {
 		return data, err
 	}
-	s.Ctx.Set(key, data, 60)
-	return s.repo.GetByID(p)
+	_ = s.Ctx.Set(key, data, 60)
+	return data, nil
 }
 
 func (s *Service[T]) Create(p parameter.Parameter, e *T) error {
@@ -37,19 +39,16 @@ func (s *Service[T]) Update(p parameter.Parameter, e *T, b *T) error {
 }
 
 func (s *Service[T]) List(p parameter.Parameter) (data []T, err error) {
-
 	key, _ := p.GenCachKey()
-
-	if err = s.Ctx.Get(key, &data); err != nil {
-		return data, err
+	// Try cache first
+	if err = s.Ctx.Get(key, &data); err == nil {
+		return data, nil
 	}
-
-	// cache miss
+	// Cache miss
 	data, err = s.repo.List(p)
 	if err != nil {
 		return nil, err
 	}
-
 	_ = s.Ctx.Set(key, data, 60)
 	return data, nil
 }

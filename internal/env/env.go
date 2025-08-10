@@ -8,8 +8,8 @@ type Env struct {
 
 type Server struct {
 	Development    bool   `json:"development" env:"SERVER_DEVELOPMENT"`
-	Address        string `json:"address" env:"SERVER_ADDRESS"`
-	Port           int    `json:"port" env:"SERVER_PORT"`
+	Address        string `json:"address" env:"SERVER_ADDRESS" `
+	Port           int    `json:"port" env:"SERVER_PORT" envDefault:"8080"`
 	CertFile       string `json:"cert_file" env:"SERVER_CERT_FILE"`
 	KeyFile        string `json:"key_file" env:"SERVER_KEY_FILE"`
 	UDPReadBuffer  int    `json:"udp_read_buffer" env:"UDP_READ_BUFFER"`
