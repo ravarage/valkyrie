@@ -11,16 +11,53 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const AllUser = `-- name: AllUser :many
+select username,
+       email,
+       role_id,
+       status
+from users
+`
+
+type AllUserRow struct {
+	Username string      `json:"username"`
+	Email    pgtype.Text `json:"email"`
+	RoleID   pgtype.Int4 `json:"role_id"`
+	Status   pgtype.Text `json:"status"`
+}
+
+func (q *Queries) AllUser(ctx context.Context) ([]*AllUserRow, error) {
+	rows, err := q.db.Query(ctx, AllUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*AllUserRow{}
+	for rows.Next() {
+		var i AllUserRow
+		if err := rows.Scan(
+			&i.Username,
+			&i.Email,
+			&i.RoleID,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const CreateUser = `-- name: CreateUser :one
-INSERT INTO users (
-    username,
-    password,
-    email,
-    role_id,
-    status
-) VALUES (
-    $1, $2, $3, $4, $5
-)
+INSERT INTO users (username,
+                   password,
+                   email,
+                   role_id,
+                   status)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, username, password, email, role_id, status
 `
 
@@ -53,7 +90,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (*User, 
 }
 
 const DeleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
+DELETE
+FROM users
 WHERE id = $1
 `
 
@@ -63,8 +101,10 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 }
 
 const GetUser = `-- name: GetUser :one
-SELECT id, username, password, email, role_id, status FROM users
-WHERE id = $1 LIMIT 1
+SELECT id, username, password, email, role_id, status
+FROM users
+WHERE id = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int32) (*User, error) {
@@ -81,13 +121,21 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (*User, error) {
 	return &i, err
 }
 
-const GetUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, password, email, role_id, status FROM users
-WHERE email = $1 LIMIT 1
+const GetUserByEmailOrUsername = `-- name: GetUserByEmailOrUsername :one
+SELECT id, username, password, email, role_id, status
+FROM users
+WHERE email = $1
+   or username = $2
+LIMIT 1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email pgtype.Text) (*User, error) {
-	row := q.db.QueryRow(ctx, GetUserByEmail, email)
+type GetUserByEmailOrUsernameParams struct {
+	Email    pgtype.Text `json:"email"`
+	Username string      `json:"username"`
+}
+
+func (q *Queries) GetUserByEmailOrUsername(ctx context.Context, arg GetUserByEmailOrUsernameParams) (*User, error) {
+	row := q.db.QueryRow(ctx, GetUserByEmailOrUsername, arg.Email, arg.Username)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -101,8 +149,10 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email pgtype.Text) (*User,
 }
 
 const GetUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password, email, role_id, status FROM users
-WHERE username = $1 LIMIT 1
+SELECT id, username, password, email, role_id, status
+FROM users
+WHERE username = $1
+LIMIT 1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*User, error) {
@@ -119,8 +169,106 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (*User
 	return &i, err
 }
 
+const ListUser = `-- name: ListUser :many
+SELECT username,
+       email,
+       role_id,
+       status
+FROM users
+WHERE ($1::text IS NULL OR
+       username ILIKE '%' || $1 || '%' OR
+       username % $1)  -- trigram similarity
+  AND ($2::text IS NULL OR password LIKE '%' || $2 || '%')
+  AND ($3::text IS NULL OR
+       email ILIKE '%' || $3 || '%' OR
+       email % $3)  -- trigram similarity
+  AND ($4::int IS NULL OR role_id = $4)
+  AND ($5::int IS NULL OR status = $5)
+ORDER BY
+    CASE
+        WHEN $6::text = 'username' AND $7::text = 'asc' THEN username
+        END ASC,
+    CASE
+        WHEN $6::text = 'username' AND $7::text = 'desc' THEN username
+        END DESC,
+    CASE
+        WHEN $6::text = 'email' AND $7::text = 'asc' THEN email
+        END ASC,
+    CASE
+        WHEN $6::text = 'email' AND $7::text = 'desc' THEN email
+        END DESC,
+    CASE
+        WHEN $6::text = 'role_id' AND $7::text = 'asc' THEN role_id
+        END ASC,
+    CASE
+        WHEN $6::text = 'role_id' AND $7::text = 'desc' THEN role_id
+        END DESC,
+    CASE
+        WHEN $6::text = 'status' AND $7::text = 'asc' THEN status
+        END ASC,
+    CASE
+        WHEN $6::text = 'status' AND $7::text = 'desc' THEN status
+        END DESC
+LIMIT $9::int OFFSET $8::int
+`
+
+type ListUserParams struct {
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	Email      string `json:"email"`
+	RoleID     int32  `json:"role_id"`
+	Status     int32  `json:"status"`
+	OrderBy    string `json:"order_by"`
+	Direction  string `json:"direction"`
+	OffsetNum  int32  `json:"offset_num"`
+	LimitCount int32  `json:"limit_count"`
+}
+
+type ListUserRow struct {
+	Username string      `json:"username"`
+	Email    pgtype.Text `json:"email"`
+	RoleID   pgtype.Int4 `json:"role_id"`
+	Status   pgtype.Text `json:"status"`
+}
+
+func (q *Queries) ListUser(ctx context.Context, arg ListUserParams) ([]*ListUserRow, error) {
+	rows, err := q.db.Query(ctx, ListUser,
+		arg.Username,
+		arg.Password,
+		arg.Email,
+		arg.RoleID,
+		arg.Status,
+		arg.OrderBy,
+		arg.Direction,
+		arg.OffsetNum,
+		arg.LimitCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []*ListUserRow{}
+	for rows.Next() {
+		var i ListUserRow
+		if err := rows.Scan(
+			&i.Username,
+			&i.Email,
+			&i.RoleID,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListUsers = `-- name: ListUsers :many
-SELECT id, username, password, email, role_id, status FROM users
+SELECT id, username, password, email, role_id, status
+FROM users
 ORDER BY id
 `
 
@@ -155,9 +303,9 @@ const UpdateUser = `-- name: UpdateUser :one
 UPDATE users
 SET username = $2,
     password = $3,
-    email = $4,
-    role_id = $5,
-    status = $6
+    email    = $4,
+    role_id  = $5,
+    status   = $6
 WHERE id = $1
 RETURNING id, username, password, email, role_id, status
 `

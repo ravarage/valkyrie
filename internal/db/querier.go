@@ -13,6 +13,7 @@ import (
 type Querier interface {
 	AddFileTag(ctx context.Context, arg AddFileTagParams) error
 	AddUserFavorite(ctx context.Context, arg AddUserFavoriteParams) error
+	AllUser(ctx context.Context) ([]*AllUserRow, error)
 	CheckFileIsFavorite(ctx context.Context, arg CheckFileIsFavoriteParams) (bool, error)
 	CheckUserHasFolderPermission(ctx context.Context, arg CheckUserHasFolderPermissionParams) (bool, error)
 	CheckUserHasPermission(ctx context.Context, arg CheckUserHasPermissionParams) (bool, error)
@@ -102,7 +103,7 @@ type Querier interface {
 	GetTag(ctx context.Context, id int32) (*Tag, error)
 	GetTagByName(ctx context.Context, name string) (*Tag, error)
 	GetUser(ctx context.Context, id int32) (*User, error)
-	GetUserByEmail(ctx context.Context, email pgtype.Text) (*User, error)
+	GetUserByEmailOrUsername(ctx context.Context, arg GetUserByEmailOrUsernameParams) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserFavorite(ctx context.Context, arg GetUserFavoriteParams) (*UserFavorite, error)
 	GetUserFilePermission(ctx context.Context, arg GetUserFilePermissionParams) (*FilePermission, error)
@@ -141,6 +142,7 @@ type Querier interface {
 	ListTags(ctx context.Context) ([]*Tag, error)
 	ListTagsByCreator(ctx context.Context, createdBy pgtype.Int4) ([]*Tag, error)
 	ListTagsForFile(ctx context.Context, fileID int32) ([]*Tag, error)
+	ListUser(ctx context.Context, arg ListUserParams) ([]*ListUserRow, error)
 	ListUserActivityLog(ctx context.Context, arg ListUserActivityLogParams) ([]*ActivityLog, error)
 	ListUserComments(ctx context.Context, userID pgtype.Int4) ([]*FileComment, error)
 	ListUserFavorites(ctx context.Context, userID int32) ([]*File, error)

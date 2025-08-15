@@ -3,6 +3,7 @@ package context
 import (
 	"backend/internal/db"
 	"backend/internal/env"
+	"backend/internal/tools/authtools"
 	"log"
 
 	envParser "github.com/caarlos0/env/v11"
@@ -17,6 +18,8 @@ type Context struct {
 	Queries      *db.Queries
 	DB           *pgx.Conn
 	RDB          *redis.Client
+	RefreshToken *authtools.JWTTools
+	AccessToken  *authtools.JWTTools
 }
 
 func NewContext() *Context {
@@ -44,5 +47,8 @@ func NewContext() *Context {
 	// Do not close the DB connection here; keep it alive for the application's lifetime.
 	queries := db.New(conn)
 
-	return &Context{Environments: Environments, Queries: queries, DB: conn, RDB: rdb}
+	accessToken := authtools.ProvideJWTTools(Environments.JWTToken.AccessSecret, Environments.JWTToken.AccessAge)
+	RefreshToken := authtools.ProvideJWTTools(Environments.JWTToken.RefreshSecret, Environments.JWTToken.RefreshAge)
+
+	return &Context{Environments: Environments, Queries: queries, DB: conn, RDB: rdb, RefreshToken: RefreshToken, AccessToken: accessToken}
 }

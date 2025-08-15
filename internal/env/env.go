@@ -4,6 +4,7 @@ type Env struct {
 	Server
 	Database
 	Redis
+	JWTToken
 }
 
 type Server struct {
@@ -24,4 +25,12 @@ type Redis struct {
 	Host     string `json:"host" env:"REDIS_HOST"`
 	DB       int    `json:"db" env:"REDIS_DB"`
 	Password string `json:"password" env:"REDIS_PASSWORD"`
+}
+
+type JWTToken struct {
+	RefreshSecret string `json:"refresh_secret" env:"JWT_REFRESH_SECRET"`
+	AccessSecret  string `json:"access_secret" env:"JWT_ACCESS_SECRET"`
+
+	RefreshAge int64 `json:"refresh_age" env:"JWT_REFRESH_AGE,required"`
+	AccessAge  int64 `json:"access_age" env:"JWT_ACCESS_AGE,required"`
 }

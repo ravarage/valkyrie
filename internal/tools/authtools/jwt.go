@@ -25,7 +25,7 @@ func (j *JWTTools) CreateJWT(userID int, username, email, role string) (string, 
 		Email:    email,
 		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)), // Token expires in 24 hours
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Microsecond * time.Duration(j.Expire))), // Token expires in 24 hours
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    constants.AppName,
