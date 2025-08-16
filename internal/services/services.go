@@ -4,15 +4,17 @@ import (
 	"backend/internal/context"
 	"backend/internal/interfaces"
 	"backend/internal/parameter"
+	"backend/internal/tools/errorlogger"
 )
 
 type Service[T any] struct {
-	repo interfaces.Service[T]
-	Ctx  *context.Context
+	repo        interfaces.Service[T]
+	Ctx         *context.Context
+	ErrorLogger *errorlogger.ErrorLogger
 }
 
-func NewService[T any](repo interfaces.Service[T], ctx *context.Context) *Service[T] {
-	return &Service[T]{repo: repo, Ctx: ctx}
+func NewService[T any](repo interfaces.Service[T], ctx *context.Context, entity string) *Service[T] {
+	return &Service[T]{repo: repo, Ctx: ctx, ErrorLogger: errorlogger.NewErrorLogger(ctx, entity)}
 }
 
 func (s *Service[T]) GetByID(p parameter.Parameter) (data T, err error) {
