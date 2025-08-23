@@ -3,11 +3,14 @@ package router
 import (
 	"backend/internal/context"
 	"backend/internal/tools/echomarshal"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"backend/internal/tools/utlis"
 	"net/http"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func Start(engine *context.Context) (e *echo.Echo) {
@@ -23,8 +26,23 @@ func Start(engine *context.Context) (e *echo.Echo) {
 			Format: "method=${method}, uri=${uri}, status=${status}, latency=${latency_human}\n",
 		}))
 	} else {
+		// Production logging -> log to file
 		e.Debug = false
-		e.Logger.SetLevel(0) // Default level
+		e.Logger.SetLevel(0) // Default
+
+		// open (or create) the log file
+		logFile, err := os.OpenFile(utlis.LogFileName("api"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			e.Logger.Fatalf("failed to open log file: %v", err)
+		}
+
+		e.Logger.SetOutput(logFile)
+
+		// middleware logging
+		e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Format: "time=${time_rfc3339}, method=${method}, uri=${uri}, status=${status}, latency=${latency_human}\n",
+			Output: logFile, // write access log to file
+		}))
 	}
 	e.Binder = &echomarshal.EchoBinder{}
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

@@ -5,6 +5,7 @@ import (
 	"backend/internal/env"
 	"backend/internal/tools/authtools"
 	"log"
+	"os"
 
 	envParser "github.com/caarlos0/env/v11"
 	"github.com/jackc/pgx/v5"
@@ -14,12 +15,14 @@ import (
 
 type Context struct {
 	context.Context
-	Environments env.Env
-	Queries      *db.Queries
-	DB           *pgx.Conn
-	RDB          *redis.Client
-	RefreshToken *authtools.JWTTools
-	AccessToken  *authtools.JWTTools
+	Environments     env.Env
+	Queries          *db.Queries
+	DB               *pgx.Conn
+	RDB              *redis.Client
+	RefreshToken     *authtools.JWTTools
+	AccessToken      *authtools.JWTTools
+	ApiLoggerFile    *os.File
+	ServerLoggerFile *os.File
 }
 
 func NewContext() *Context {

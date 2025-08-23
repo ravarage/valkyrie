@@ -3,7 +3,7 @@ package errorlogger
 import "backend/internal/context"
 
 type AppError struct {
-	Code     string `json:"code"`
+	Code     int    `json:"code"`
 	Message  string `json:"message"`
 	Details  string `json:"details,omitempty"`
 	HttpCode int    `json:"http_code"`
@@ -17,4 +17,18 @@ type ErrorLogger struct {
 
 func NewErrorLogger(ctx *context.Context, entity string) *ErrorLogger {
 	return &ErrorLogger{Entity: entity, Context: *ctx}
+}
+
+func (h *ErrorLogger) LogError(errortype int, err error, message string) *AppError {
+	if err == nil {
+		return nil
+	}
+	return &AppError{
+		Code:     errortype,
+		Message:  message,
+		Details:  err.Error(),
+		HttpCode: HttpError[errortype],
+		GrpcCode: GrpcError[errortype],
+	}
+
 }
